@@ -1,0 +1,24 @@
+# Python 3.11 on Windows (x64) and macOS (Apple Silicon or Intel). Two steps; setup_mac.sh / setup_windows.ps1 run them.
+#   python -m pip install -r requirements.txt
+#   python -m pip install --no-deps envisionhgdetector==3.0.8
+# envisionhgdetector goes in with --no-deps: its declared deps pin tensorflow-cpu, which has no macOS build, and
+# cuecom only uses its LightGBM model (video.py loads that module without the TensorFlow parts).
+# macOS also needs the OpenMP runtime for LightGBM: brew install libomp
+mediapipe==0.10.7
+opencv-python==4.11.0.86
+numpy==1.26.4
+lightgbm==4.7.0
+scikit-learn==1.7.2
+joblib==1.6.0
+h5py==3.16.0
+torch==2.14.1
+transformers==5.20.2
+sentence-transformers==6.2.0
+faster-whisper==1.2.1
+librosa==0.11.0
+soundfile==0.14.0
+sounddevice==0.5.6
+ultralytics==8.4.188
+lap==0.5.12
+pyttsx3==2.99
+anthropic==2.3.0
