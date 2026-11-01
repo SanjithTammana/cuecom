@@ -1,4 +1,10 @@
-"""Assessment service: UI-independent recorded media -> JSON packet."""
+"""Assessment service: UI-independent recorded media -> JSON packet -> three options to confirm.
+
+Any frontend calls prepare / observe / packet / assess / confirm / close. The interpretation stage is
+an `Assessor` (cuecom.core.interfaces); pass one in to replace Gemini, or leave it out to build a fresh
+Gemini client per attempt (so a key added to .env needs no restart). Decisions go to
+`<session home>/trace-<session id>.jsonl`.
+"""
 from collections import deque
 from copy import deepcopy
 import json
@@ -6,25 +12,31 @@ from pathlib import Path
 
 import numpy as np
 
-from cuecom.perception.audio.events import SR, EnergySegmenter, Voc2VecEncoder
+from cuecom.config import ROOT, Settings
+from cuecom.core.clock import SessionClock
+from cuecom.core.trace import NullTrace, Trace
 from cuecom.llm.assessment import AssessmentClient
-from cuecom.sensors.capture import SessionClock
-from cuecom.session.engine import SessionEngine
+from cuecom.perception.audio.events import SR, EnergySegmenter, Voc2VecEncoder
 from cuecom.perception.vision.session import VisualSession
-
-from cuecom.config import ROOT
+from cuecom.session.engine import SessionEngine
 
 
 class ClipAssessmentService:
-    def __init__(self, profile='default', speaker=None, root=ROOT):
+    assessor, trace = None, NullTrace()  # class defaults also cover test doubles built without __init__
+
+    def __init__(self, profile='default', speaker=None, root=ROOT, assessor=None, trace=None):
         from cuecom.perception.audio.events import safe_name
         from cuecom.learning.motifs import MotifLearner
         safe_name(profile)
         self.root, self.clock = Path(root), SessionClock()
-        self.home = self.root / '.scratch_session' / profile
+        self.home = Settings(self.root).session_home(profile)
         self.home.mkdir(parents=True, exist_ok=True)
         (self.home / '.gitignore').write_text('*\n', encoding='utf-8')
-        self.engine = SessionEngine(self.clock.session_id, MotifLearner(path=self.home / 'assessment-motifs.json'), speaker, self.root)
+        self.assessor = assessor
+        self.trace = trace if trace is not None else Trace(self.home / f'trace-{self.clock.session_id}.jsonl',
+                                                             self.clock.now)
+        self.engine = SessionEngine(self.clock.session_id, MotifLearner(path=self.home / 'assessment-motifs.json'),
+                                    speaker, self.root, trace=self.trace)
         self.visual, self.encoder, self.transcriber = None, None, None
         self.asr_provider = 'local'
         self.warnings, self.recent_assessments = [], deque(maxlen=5)
@@ -52,6 +64,8 @@ class ClipAssessmentService:
                 self.warnings.append('Local Whisper not cached; Gemini can still assess clip audio.')
         except (RuntimeError, OSError, ImportError):
             self.warnings.append('Local transcription unavailable; Gemini can still assess clip audio.')
+        self.trace.emit('assessment', 'prepare', asr_provider=self.asr_provider, encoder=self.encoder is not None,
+                        transcriber=self.transcriber is not None, warnings=list(self.warnings))
         return self
 
     def observe(self, frame, at_s):
@@ -131,6 +145,9 @@ class ClipAssessmentService:
             'belief': self.engine.learner.posterior([e['event_id'] for e in events if e['ownership_valid']], capture['end_s']),
             'spelled': self.engine.spelled}
         self._save_packet(clip, packet)
+        self.trace.emit('assessment', 'packet', clip_id=clip.clip_id, event_ids=ids, audio_events=len(audio_events),
+                        transcript_turns=len(turns), communicator=logical, ownership_valid=owned,
+                        limitations=warnings)
         return packet
 
     @staticmethod
@@ -189,7 +206,14 @@ class ClipAssessmentService:
         packet = packet if packet is not None else self.packet(clip, capture, noise_db)
         self._meta_transcript(clip, capture, packet)
         # Reload ignored .env on each explicit attempt; adding a key needs no restart.
-        result = AssessmentClient(self.root).assess(packet, capture['video_path'], capture['audio_path'])
+        assessor = self.assessor if self.assessor is not None else AssessmentClient(self.root)
+        try:
+            result = assessor.assess(packet, capture['video_path'], capture['audio_path'])
+        except Exception as error:
+            self.trace.emit('assessment', 'assess_failed', clip_id=clip.clip_id, error=type(error).__name__)
+            raise
+        self.trace.emit('assessment', 'assess', clip_id=clip.clip_id,
+                        options=[{k: o.get(k) for k in ('kind', 'text')} for o in result.get('options', [])])
         (clip.folder / 'assessment.json').write_text(json.dumps(result, indent=2, allow_nan=False), encoding='utf-8')
         self.recent_assessments.append({'clip_id': clip.clip_id, 'unconfirmed': True,
             'assessment_summary': result['assessment']['summary'], 'partner_context': result['partner_context']})
@@ -202,9 +226,13 @@ class ClipAssessmentService:
                 or packet.get('capture', {}).get('clock_valid') is not True
                 or option['kind'] not in {'message', 'hypothesis'}):
             evidence = []
+        self.trace.emit('assessment', 'confirm', clip_id=packet['clip_id'], kind=option['kind'],
+                        grounded_event_ids=evidence)
         return self.engine.confirm_text(option['text'], evidence, at_s)
 
     def close(self):
         self.engine.learner.save()
         if self.visual is not None:
             self.visual.close()
+        self.trace.emit('assessment', 'close')
+        self.trace.close()

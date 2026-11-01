@@ -1,19 +1,27 @@
-"""Sensor-independent evidence, confirmation and suggestion state for the test lab."""
+"""Sensor-independent evidence, confirmation and suggestion state for a session.
+
+Collaborators come in through the constructor (see cuecom.core.interfaces): a `Learner`, an optional
+`Speaker` and an optional `Tracer`. Every decision is written to the trace.
+"""
 from collections import deque
 from copy import deepcopy
+from dataclasses import replace
 import json
 from pathlib import Path
 import re
 import uuid
 
 from cuecom.context.state import ConversationState
+from cuecom.core.trace import NullTrace
+from cuecom.core.types import Option
 from cuecom.learning.motifs import MotifLearner
 
 
 class SessionEngine:
-    def __init__(self, session_id, learner=None, speaker=None, root=None):
+    def __init__(self, session_id, learner=None, speaker=None, root=None, trace=None):
         self.session_id, self.speaker = session_id, speaker
         self.learner = learner if learner is not None else MotifLearner()
+        self.trace = trace if trace is not None else NullTrace()
         self.context = ConversationState()
         self.events = deque(maxlen=128)
         self.evidence_revision = 0
@@ -33,6 +41,7 @@ class SessionEngine:
 
     def set_role(self, person_id, owned):
         if self.person_id is not None and person_id != self.person_id:
+            self.trace.emit('engine', 'role_reset', previous=self.person_id, person_id=person_id)
             self.events.clear()
             self.options, self.option_packet, self.spelled = [], None, ''
             self.context = ConversationState()
@@ -46,6 +55,9 @@ class SessionEngine:
         self.events.append(event)
         self.evidence_revision += 1
         self.last_discovery = result
+        self.trace.emit('engine', 'observe', event_id=event['event_id'], modality=event['modality'],
+                        person_id=event.get('person_id'), t_start=event['t_start'], t_end=event['t_end'],
+                        status=result.get('status'), motif_id=result.get('motif_id'))
         # Only measured overlap on the shared clock: no nearest-neighbor semantic pairing.
         if event['modality'] in {'audio', 'video'}:
             opposite = 'video' if event['modality'] == 'audio' else 'audio'
@@ -58,6 +70,8 @@ class SessionEngine:
                     paired = pair['event']
                     if not any(e['event_id'] == paired['event_id'] for e in self.events):
                         self.events.append(paired)
+                        self.trace.emit('engine', 'paired', event_id=paired['event_id'],
+                                        source_event_ids=paired.get('source_event_ids'))
                     break
         return result
 
@@ -90,10 +104,14 @@ class SessionEngine:
                                         for e in self.events) for identity in packet['event_ids']))
         if version != self.version() or not fresh:
             self.status = 'Discarded stale suggestions; R refreshes'
+            self.trace.emit('engine', 'stale', reason='version' if version != self.version() else 'expired',
+                            event_ids=packet['event_ids'])
             return False
-        self.options = [dict(o, option_id=uuid.uuid4().hex) for o in result['options']]
+        self.options = [replace(Option.from_dict(o), option_id=uuid.uuid4().hex).to_dict() for o in result['options']]
         self.option_packet = deepcopy(packet)
         self.status = 'Possibilities awaiting your confirmation; R refreshes'
+        self.trace.emit('engine', 'present', event_ids=packet['event_ids'],
+                        options=[{k: o[k] for k in ('option_id', 'kind', 'text')} for o in self.options])
         return True
 
     def suggest_local(self, now_s):
@@ -131,6 +149,8 @@ class SessionEngine:
             self.speaker.say(text)
         self.options, self.option_packet, self.spelled = [], None, ''
         self.status = 'Confirmed: ' + text + ' | ' + outcome['status']
+        self.trace.emit('engine', 'confirm', text=text, event_ids=list(event_ids), learning=outcome['status'],
+                        spoken=bool(self.speaker))
         return outcome
 
     def reject(self, now_s):
@@ -143,11 +163,13 @@ class SessionEngine:
         self.rejected.extend(ids)
         self.options, self.option_packet = [], None
         self.status = 'Rejected wording; no intent-negative label trained'
+        self.trace.emit('engine', 'reject', option_ids=ids)
 
     def undo(self):
         undone = self.learner.undo()
         if undone:
             self.evidence_revision += 1
             self.options, self.option_packet = [], None
+        self.trace.emit('engine', 'undo', undone=bool(undone))
         self.status = 'Undid latest learned association (spoken audio cannot be recalled)' if undone else 'No association to undo'
         return undone

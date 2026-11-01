@@ -15,97 +15,17 @@ import uuid
 
 import numpy as np
 
+from cuecom.core.types import BAD_FLAGS, Event
+from cuecom.core.validate import ids as _ids, name as _name, time as _time, unit as _unit
+
 
 SCHEMA = 1
 ALGORITHM = 'spherical-prototypes-confirmed-counts-v1'
-BAD_FLAGS = ('tts', 'overlap', 'tracking_lost', 'source_lost')
 UNKNOWN = '(unknown)'
 
 
-def _name(value, field, maximum=160):
-    if not isinstance(value, str) or not value.strip() or len(value) > maximum:
-        raise ValueError(f'{field} must be a nonempty string of at most {maximum} characters')
-    return value
-
-
-def _time(value, field):
-    try:
-        value = float(value)
-    except (TypeError, ValueError) as error:
-        raise ValueError(f'{field} must be finite and nonnegative') from error
-    if not math.isfinite(value) or not 0 <= value <= 1e12:
-        raise ValueError(f'{field} must be finite and nonnegative')
-    return value
-
-
-def _ids(values, field, maximum=512):
-    if not isinstance(values, (list, tuple)) or len(values) > maximum:
-        raise ValueError(f'{field} must be a bounded list of IDs')
-    return list(dict.fromkeys(_name(value, field) for value in values))
-
-
-def _unit(values):
-    vector = np.asarray(values, dtype=np.float64)
-    if vector.ndim != 1 or not 2 <= len(vector) <= 4096 or not np.isfinite(vector).all():
-        raise ValueError('features must be a finite one-dimensional vector of 2-4096 values')
-    norm = float(np.linalg.norm(vector))
-    if not math.isfinite(norm) or norm < 1e-10:
-        raise ValueError('zero or numerically unbounded features cannot form a motif')
-    return vector / norm
-
-
 def _record(event):
-    if not isinstance(event, dict):
-        raise ValueError('event must be an object')
-    identity = _name(event.get('event_id'), 'event_id')
-    session = _name(event.get('session_id'), 'session_id', 128)
-    modality = event.get('modality')
-    if modality not in ('audio', 'video', 'paired'):
-        raise ValueError('modality must be audio, video or paired')
-    start, end = _time(event.get('t_start'), 't_start'), _time(event.get('t_end'), 't_end')
-    if end < start:
-        raise ValueError('event end precedes start')
-    person = event.get('person_id')
-    if person is not None:
-        person = _name(person, 'person_id', 128)
-    quality = event.get('quality') or {}
-    if not isinstance(quality, dict):
-        raise ValueError('quality must be an object')
-    quality = {key: quality.get(key) is True for key in (*BAD_FLAGS, 'confirmed_by_user')}
-    features = _unit(event.get('features')).tolist()
-    feature_schema = _name(event.get('feature_schema', 'unspecified-v1'), 'feature_schema', 256)
-    sources = _ids(event.get('source_event_ids') or [], 'source_event_id', 2)
-    if len(sources) > 2:
-        raise ValueError('a paired observation may contain at most two source events')
-    for source in sources:
-        _name(source, 'source_event_id')
-        if source == identity:
-            raise ValueError('an event cannot be its own source')
-    if modality == 'paired' and len(sources) != 2:
-        raise ValueError('paired events require two provenance IDs')
-    group = event.get('group_id')
-    if group is not None:
-        group = _name(group, 'group_id')
-    negative = quality['confirmed_by_user'] and (
-        event.get('negative') is True or event.get('is_communicative') is False
-        or event.get('confirmed_negative') is True)
-    value = {'event_id': identity, 'session_id': session, 'modality': modality,
-             't_start': start, 't_end': end, 'person_id': person,
-             'ownership_valid': event.get('ownership_valid') is True and person is not None,
-             'clock_valid': event.get('clock_valid') is True,
-             'complete': event.get('complete', True) is True,
-             'features': features, 'feature_schema': feature_schema,
-             'source_event_ids': sources, 'group_id': group,
-             'quality': quality, 'confirmed_negative': bool(negative)}
-    if event.get('context_id') is not None:
-        context = event['context_id']
-        if not isinstance(context, int) or isinstance(context, bool) or context < 0:
-            raise ValueError('context_id must be a nonnegative integer')
-        value['context_id'] = context
-    canonical = {**value, 'features': [round(x, 8) for x in features]}
-    value['fingerprint'] = hashlib.sha256(json.dumps(canonical, sort_keys=True, separators=(',', ':'),
-                                                    allow_nan=False).encode('utf-8')).hexdigest()
-    return value
+    return Event.from_dict(event).to_dict()
 
 
 def _blocked(event):

@@ -1,18 +1,9 @@
-"""One monotonic origin for video, delivered audio and conversation turns."""
+"""Microphone capture on the shared session clock, plus WAV replay at the pipeline rate."""
 import math
-import time
-import uuid
+
+import numpy as np
 
 from cuecom.perception.audio.events import SR, SampleCapture
-
-
-class SessionClock:
-    def __init__(self, source=time.perf_counter):
-        self.source, self.origin = source, source()
-        self.session_id = uuid.uuid4().hex
-
-    def now(self):
-        return self.source() - self.origin
 
 
 class SharedAudioCapture(SampleCapture):
@@ -39,3 +30,22 @@ class SharedAudioCapture(SampleCapture):
 
     def at(self, sample_index):
         return self.anchor_s + sample_index / SR if self.clock_valid and self.anchor_s is not None else None
+
+
+def read_audio(path):
+    import soundfile as sf
+    from scipy.signal import resample_poly
+    wave, sr = sf.read(str(path), dtype='float32', always_2d=True)
+    wave = wave.mean(axis=1)
+    if sr != SR:
+        divisor = math.gcd(sr, SR)
+        wave = resample_poly(wave, SR // divisor, sr // divisor).astype(np.float32)
+    if not len(wave) or not np.isfinite(wave).all():
+        raise ValueError('WAV has no finite audio samples')
+    return wave
+
+
+def input_stream(capture, device):
+    import sounddevice as sd
+    return sd.InputStream(samplerate=SR, channels=1, blocksize=320, dtype='float32',
+                          device=device, callback=capture.callback)

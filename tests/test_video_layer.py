@@ -243,11 +243,10 @@ class VideoContract(unittest.TestCase):
         self.assertEqual(image.shape[1], 1060)
 
     def test_live_capture_records_frames_skipped_by_inference(self):
-        path = Path(__file__).resolve().parents[1] / 'apps' / 'labs' / 'video_layer_lab.py'
-        spec = importlib.util.spec_from_file_location('video_live_test', path)
-        lab = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(lab)
-        gate = lab.threading.Event()
+        import threading
+        from cuecom.sensors.camera import LiveCapture
+        import cv2
+        gate = threading.Event()
 
         class FakeCamera:
             def __init__(self):
@@ -270,7 +269,7 @@ class VideoContract(unittest.TestCase):
 
         camera = FakeCamera()
         with tempfile.TemporaryDirectory() as folder:
-            capture = lab.LiveCapture(camera, Path(folder), 'idle').start()
+            capture = LiveCapture(camera, Path(folder), 'idle').start()
             try:
                 first = capture.read_after(-1)
                 self.assertEqual(first[0], 0)
@@ -286,9 +285,9 @@ class VideoContract(unittest.TestCase):
                 self.assertEqual(len(rows), 6)
                 self.assertEqual(rows[-1]['label'], 'thumb_up')
                 self.assertEqual(rows[-1]['t_capture'], last[1])
-                saved = lab.cv2.VideoCapture(str(Path(folder) / 'capture.mp4'))
+                saved = cv2.VideoCapture(str(Path(folder) / 'capture.mp4'))
                 try:
-                    self.assertEqual(int(saved.get(lab.cv2.CAP_PROP_FRAME_COUNT)), 6)
+                    self.assertEqual(int(saved.get(cv2.CAP_PROP_FRAME_COUNT)), 6)
                 finally:
                     saved.release()
             finally:

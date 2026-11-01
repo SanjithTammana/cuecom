@@ -17,12 +17,14 @@ import numpy as np
 
 from cuecom.perception.audio.events import SR, EnergySegmenter, Voc2VecEncoder, rms_db, safe_name
 from cuecom.llm.gemini import GeminiClient, GeminiError
-from cuecom.sensors.capture import SessionClock, SharedAudioCapture
+from cuecom.core.clock import SessionClock
+from cuecom.core.trace import Trace
+from cuecom.sensors.microphone import SharedAudioCapture
 from cuecom.session.engine import SessionEngine
 from cuecom.output.tts import Speaker
 from cuecom.perception.vision.session import VisualSession
-from apps.labs.audio_layer_lab import input_stream, read_audio
-from apps.labs.video_layer_lab import LiveCapture
+from cuecom.sensors.microphone import input_stream, read_audio
+from cuecom.sensors.camera import LiveCapture
 from cuecom.debug.overlay import render_tracking
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -157,7 +159,8 @@ def main(argv=None):
     with ExitStack() as stack:
         speaker = Speaker(enabled=not (args.no_tts or args.headless))
         stack.callback(speaker.close)
-        engine = SessionEngine(clock.session_id, MotifLearner(path=home / 'motifs.json'), speaker, ROOT)
+        engine = SessionEngine(clock.session_id, MotifLearner(path=home / 'motifs.json'), speaker, ROOT,
+                               trace=Trace(folder / 'trace.jsonl', clock.now))
         stack.callback(engine.learner.save)
         visual = VisualSession(clock.session_id, home / 'person.json', asl=not args.no_asl)
         stack.callback(visual.close)

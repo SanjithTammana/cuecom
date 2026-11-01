@@ -82,28 +82,30 @@ python -m unittest discover -s tests -t .
 ```
 
 ## Layout
-| File | Role |
-|---|---|
-| `cuecom/perception/vision/video.py` | person tracking (YOLO11n-pose + ByteTrack), Envision LightGBM gesture probability, MediaPipe gestures/face on the selected user |
-| `cuecom/perception/vision/features.py`, `cuecom/perception/vision/session.py`, `cuecom/perception/vision/person_lock.py`, `cuecom/perception/vision/auto_target.py` | visual feature layer and choosing which person is the user |
-| `cuecom/perception/audio/vocalization.py` | voc2vec vocalization classifier, mic pipeline, `BayesianFusion` |
-| `cuecom/perception/audio/events.py` | standalone nonverbal audio events, before fusion (one microphone cannot say who made a sound) |
-| `cuecom/perception/speech/transcribe.py` | speech transcription (local faster-whisper; optional hosted provider) |
-| `cuecom/learning/motifs.py` | anonymous audiovisual motifs learned from confirmed choices |
-| `cuecom/inference/retrieval.py` | phrase database, MiniLM embeddings, phrase ranker |
-| `cuecom/inference/meaning.py` | partner-question context, referents from pointing, mixed-signal clarify, sentence composer |
-| `cuecom/context/conversation.py`, `cuecom/context/state.py` | conversation model: (partner turn -> reply) pairs give P(reply type \| partner) and real replies |
-| `cuecom/context/acts.py` | Switchboard dialogue acts: P(act \| text), act transitions, act -> intent map |
-| `cuecom/perception/vision/asl.py` | ASL fingerspelling (A-Z): EfficientNet-B0 classifier + stability voting |
-| `cuecom/perception/vision/signs.py` | enrolled keyword signs: guided recording, DTW spotting with a no-sign option |
-| `cuecom/session/assessment.py`, `cuecom/sensors/clip.py`, `apps/assessment.py` | recorded clip -> evidence packet -> three options; UI-independent service plus OpenCV surface |
-| `cuecom/llm/gemini.py`, `cuecom/llm/assessment.py`, `cuecom/llm/composer.py` | optional hosted LLM layers with validation and timeouts |
-| `apps/session.py`, `cuecom/session/engine.py`, `cuecom/sensors/capture.py` | session entry point and engine |
-| `cuecom/output/tts.py` | offline text-to-speech |
-| `tools/simulate.py` | simulator and evaluations (synthetic signals, held-out dialogues, AAC corpus coverage) |
-| `apps/live.py` | earlier live loop and panel |
-| `config/` | likelihood tables (placeholders), phrase database, LLM profiles |
-| `tools/` | tests, benches and layer labs |
-| `docs/` | plan, evaluation, layer notes and research |
+The pipeline is a set of stages behind small interfaces; [architecture](docs/ARCHITECTURE.md) explains
+the seams, how to add a component, and how to read a session trace.
+
+```
+cuecom/
+  core/        types.py (Event, Option), interfaces.py (stage protocols), clock.py, trace.py, validate.py
+  config.py    repository paths (Settings)
+  sensors/     camera.py (LiveCapture), microphone.py (shared-clock mic, WAV replay), clip.py (recorded clips)
+  perception/  vision/  video.py (YOLO11n-pose + ByteTrack, Envision, MediaPipe), features.py, session.py
+                        (VisualSession), person_lock.py, auto_target.py, envision.py, asl.py, signs.py
+               audio/   events.py (segmenter, voc2vec, template classifier), vocalization.py (classifier + fusion)
+               speech/  transcribe.py (faster-whisper, optional Meta Muse)
+  learning/    motifs.py (MotifLearner: motifs grounded only through confirmations)
+  context/     state.py (ConversationState), conversation.py (reply model), acts.py (dialogue acts)
+  inference/   meaning.py (referents, clarify, composer), retrieval.py (phrase database + ranker)
+  llm/         gemini.py, assessment.py (three validated options), composer.py (Anthropic/other providers)
+  session/     engine.py (SessionEngine), assessment.py (ClipAssessmentService)
+  output/      tts.py
+  debug/       overlay.py (landmark/tracking drawing)
+apps/          session.py, assessment.py (OpenCV surfaces), live.py (earlier loop), labs/ (layer test labs)
+tests/         offline contract tests
+tools/         simulate.py, pool_oracle.py, benches, check_gemini.py
+config/        likelihood tables (placeholders), phrase database, LLM profiles
+docs/          architecture, plan, evaluation, layer notes and research
+```
 
 Phrase data includes messages from Vertanen & Kristensson (2011), CC BY 4.0. See `data/aac_corpus/README.md`.

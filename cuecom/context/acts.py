@@ -21,7 +21,6 @@ import re
 import urllib.request
 import zipfile
 from collections import Counter, defaultdict
-from pathlib import Path
 
 import numpy as np
 

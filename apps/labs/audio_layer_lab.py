@@ -9,7 +9,6 @@ import argparse
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 import json
-import math
 from pathlib import Path
 import queue
 import sys
@@ -22,6 +21,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+from cuecom.sensors.microphone import input_stream, read_audio
 from cuecom.perception.audio.events import (SR, NEGATIVES, EnergySegmenter, SampleCapture, Voc2VecEncoder,
                          EventProcessor, safe_name, save_profile, load_profile, rms_db,
                          annotate_capture_timing)
@@ -39,19 +39,6 @@ def private_folder(path):
 
 def profile_path(name):
     return HOME / 'profiles' / (safe_name(name) + '.npz')
-
-
-def read_audio(path):
-    import soundfile as sf
-    from scipy.signal import resample_poly
-    wave, sr = sf.read(str(path), dtype='float32', always_2d=True)
-    wave = wave.mean(axis=1)
-    if sr != SR:
-        divisor = math.gcd(sr, SR)
-        wave = resample_poly(wave, SR // divisor, sr // divisor).astype(np.float32)
-    if not len(wave) or not np.isfinite(wave).all():
-        raise ValueError('WAV has no finite audio samples')
-    return wave
 
 
 def draw_panel(wave, caption, state, level, noise=None, result=None, stats=None, progress=None):
@@ -112,12 +99,6 @@ def trimmed_take(wave, noise, allow_quiet=False):
     if end - start < int(.12 * SR):
         raise ValueError('sound is too brief; retry this take')
     return wave[start:end]
-
-
-def input_stream(capture, device):
-    import sounddevice as sd
-    return sd.InputStream(samplerate=SR, channels=1, blocksize=320, dtype='float32',
-                          device=device, callback=capture.callback)
 
 
 def enroll(args, encoder, folder):

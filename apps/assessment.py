@@ -16,8 +16,8 @@ from cuecom.sensors.clip import ClipRecorder, RecordedAudioCapture
 from cuecom.session.assessment import ClipAssessmentService
 from cuecom.perception.audio.events import rms_db
 from cuecom.llm.gemini import GeminiError
-from apps.labs.audio_layer_lab import input_stream
-from apps.labs.video_layer_lab import LiveCapture
+from cuecom.sensors.microphone import input_stream
+from cuecom.sensors.camera import LiveCapture
 from cuecom.debug.overlay import render_tracking
 from cuecom.output.tts import Speaker
 

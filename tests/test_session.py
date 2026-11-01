@@ -14,7 +14,8 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from cuecom.perception.vision.auto_target import AutomaticTarget
 from cuecom.perception.vision.asl import FingerspellReader
-from cuecom.sensors.capture import SessionClock, SharedAudioCapture
+from cuecom.core.clock import SessionClock
+from cuecom.sensors.microphone import SharedAudioCapture
 from cuecom.session.engine import SessionEngine
 from apps.session import interval_owner, Lane
 from cuecom.perception.vision.session import visual_vector
