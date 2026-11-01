@@ -16,6 +16,7 @@ multimodal_packet.tmp
 panel_snapshot.png
 data/dialogue/
 data/signs/
+data/confirmations.jsonl
 node_modules/
 *.log
 .DS_Store

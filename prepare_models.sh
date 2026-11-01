@@ -7,10 +7,10 @@ PY=".venv/bin/python"
 [ -x "$PY" ] || { echo "No .venv yet. Run first: bash setup_mac.sh"; exit 1; }
 
 echo "1/4  Envision gesture models"
-"$PY" envision_port.py export
+"$PY" -m cuecom.perception.vision.envision export
 
 echo "2/4  MediaPipe pose, face and gesture models"
-"$PY" -c "from video import MODELS, GESTURE_URL, FACE_URL, download_once; download_once(GESTURE_URL, MODELS/'gesture_recognizer.task'); download_once(FACE_URL, MODELS/'face_landmarker.task'); download_once('https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task', MODELS/'pose_landmarker_full.task')"
+"$PY" -c "from cuecom.perception.vision.video import MODELS, GESTURE_URL, FACE_URL, download_once; download_once(GESTURE_URL, MODELS/'gesture_recognizer.task'); download_once(FACE_URL, MODELS/'face_landmarker.task'); download_once('https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task', MODELS/'pose_landmarker_full.task')"
 
 echo "3/4  YOLO person detector"
 "$PY" -c "from ultralytics import YOLO; YOLO('yolo11n-pose.pt')"

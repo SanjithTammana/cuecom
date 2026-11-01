@@ -94,6 +94,25 @@ class TraceTests(unittest.TestCase):
             self.assertEqual(trace.read(path, event='confirm')[0]['event_ids'], ['e1'])
 
 
+class InjectedTracerTests(unittest.TestCase):
+    def test_service_accepts_any_protocol_tracer(self):
+        from cuecom.session.assessment import ClipAssessmentService
+
+        class Recorder:
+            def __init__(self): self.records, self.closed = [], False
+            def emit(self, stage, event, /, **data): self.records.append((stage, event))
+            def close(self): self.closed = True
+
+        recorder = Recorder()
+        self.assertIsInstance(recorder, interfaces.Tracer)
+        with tempfile.TemporaryDirectory() as folder:
+            service = ClipAssessmentService(root=folder, trace=recorder)
+            service.close()
+            self.assertEqual(recorder.records, [('assessment', 'close')])
+            self.assertTrue(recorder.closed)
+            self.assertEqual(list(Path(folder, '.scratch_session', 'default').glob('trace-*.jsonl')), [])
+
+
 class InterfaceTests(unittest.TestCase):
     def test_current_implementations_satisfy_the_stage_protocols(self):
         from cuecom.learning.motifs import MotifLearner

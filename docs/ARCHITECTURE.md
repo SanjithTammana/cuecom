@@ -71,8 +71,9 @@ To trace something new, take a `trace=None` argument, default to `NullTrace()`, 
 
 - Only `sensors/` opens cameras and microphones; only `llm/` and `perception/speech/` call the network.
 - `apps/` holds entry points and drawing, never logic a frontend would need.
-- Paths come from `cuecom.config` (`ROOT`, `Settings`); nothing writes outside the repository's ignored
-  folders (`models/`, `.scratch*`, `data/signs/`, `data/dialogue/`).
+- Paths come from `cuecom.config` (`ROOT`, `Settings`). Runtime output goes to ignored paths
+  (`models/`, `.scratch*`, `data/signs/`, `data/dialogue/`, `data/confirmations.jsonl`); keep new
+  runtime output there, and check `git status` before committing after a live session.
 - Run modules from the repository root with `python -m`, for example `python -m apps.session --assessment`.
 
 ## Not yet unified (follow-up PRs)

@@ -20,7 +20,7 @@ Export Envision's packaged CNN and LightGBM assets (h5py is included in requirem
 Download the three MediaPipe task bundles, using the existing atomic download helper:
 
 ```powershell
-& .\.venv\Scripts\python.exe -c "from video import MODELS, GESTURE_URL, FACE_URL, download_once; download_once(GESTURE_URL, MODELS/'gesture_recognizer.task'); download_once(FACE_URL, MODELS/'face_landmarker.task'); download_once('https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task', MODELS/'pose_landmarker_full.task')"
+& .\.venv\Scripts\python.exe -c "from cuecom.perception.vision.video import MODELS, GESTURE_URL, FACE_URL, download_once; download_once(GESTURE_URL, MODELS/'gesture_recognizer.task'); download_once(FACE_URL, MODELS/'face_landmarker.task'); download_once('https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task', MODELS/'pose_landmarker_full.task')"
 ```
 
 See Google's [Pose Landmarker guide](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python)
