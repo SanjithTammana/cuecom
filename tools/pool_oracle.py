@@ -5,9 +5,9 @@ from collections import defaultdict
 
 sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parents[1]))   # repo root
 import numpy as np
-import simulate as S
-from conversation import INDEX, ConversationModel
-from meaning import MeaningComposer, NONE
+import tools.simulate as S
+from cuecom.context.conversation import INDEX, ConversationModel
+from cuecom.inference.meaning import MeaningComposer, NONE
 
 fusion, ranker = S.load_decoder()
 intents = [i for i in fusion.phrases if i != '(no message)']

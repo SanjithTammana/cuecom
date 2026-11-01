@@ -7,12 +7,12 @@ listed at the bottom, **[X]** extrapolation from a cited number, **[J]** my judg
 
 - `PhraseRanker.rank` scores each phrase as `profile @ posterior`, with `embed_weight=0`, so a phrase's profile is its intent tag.
   On a flat posterior every phrase of every intent scores the same, and the top 3 become the first phrases in file order (plus the MMR term).
-  That is the "weak suggestions" symptom. [E: retrieval.py]
+  That is the "weak suggestions" symptom. [E: cuecom/inference/retrieval.py]
 - `config/likelihoods.json`: in `mp_gesture`, the rows for Help, Repeat, Want and Break are uniform (0.125 for every label). No gesture label
   can ever raise those four intents. `envision` and `vocalization` are neutral too. So from video alone the posterior can only move among
   Yes, No, Attention and Show; the other four move only through Whisper keywords. [E: likelihoods.json]
 - `BayesianFusion.infer` is a memoryless snapshot: every call recomputes from the prior. Today that causes flicker, not double counting. Double
-  counting appears the moment a recursive filter is added (section B). [E: audio_text.py]
+  counting appears the moment a recursive filter is added (section B). [E: cuecom/perception/audio/vocalization.py]
 - Output flatness is mostly an information problem. An LLM cannot recover intent the sensors did not capture. What an LLM does add is
   **conversation context** (what the partner just said), which is new information the pipeline does not use today. [J, supported by C1/C2 below]
 
@@ -142,7 +142,7 @@ T      = s*I + (1-s) * row-normalized(prior mass, with extra mass into none)   #
 - Add an **evidence-onset reset**: when a new strong observation disagrees with the belief, raise the escape probability (1-s) for one step so
   a new gesture can take over quickly. [J]
 - Integration: `BayesianFusion` already builds a per-source log-likelihood vector; the filter replaces `_start(None)` with `T^T b_prev` and keeps
-  `b` in `run.py` state. About 30 lines.
+  `b` in `apps/live.py` state. About 30 lines.
 
 ### B2. Likelihood tempering (stop double counting)
 
@@ -158,7 +158,7 @@ lambda_s   = min(1, dt / tau_s)      # tau_s = evidence correlation time: ~0.5-1
 
 ### B3. Head nod / head shake as yes/no evidence
 
-**Setup (cheap):** `video.py` already creates `FaceLandmarker` with `output_face_blendshapes=True`. Add
+**Setup (cheap):** `cuecom/perception/vision/video.py` already creates `FaceLandmarker` with `output_face_blendshapes=True`. Add
 `output_facial_transformation_matrixes=True` (default False); the 4x4 matrix maps a canonical face model to the detected face [S18]. No new model.
 
 **Algorithm [J]:**

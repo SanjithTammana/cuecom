@@ -1,5 +1,5 @@
 {
-  "note": "PROVISIONAL mapping for simulate.py only: common conventions (nod=yes, shake=no, wave=attention, raised hold=help, point=want/show, fist=break). Not Sanjith's mapping; the live app does not load it.",
+  "note": "PROVISIONAL mapping for tools/simulate.py only: common conventions (nod=yes, shake=no, wave=attention, raised hold=help, point=want/show, fist=break). Not Sanjith's mapping; the live app does not load it.",
   "sources": {
     "head": {
       "labels": [

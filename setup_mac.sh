@@ -21,4 +21,4 @@ python3.11 -m venv .venv
 echo
 echo "Done. Grant Camera and Microphone access to your terminal (or PyCharm) in"
 echo "System Settings > Privacy & Security, then run:"
-echo "  .venv/bin/python cuecom_session.py --assessment"
+echo "  .venv/bin/python -m apps.session --assessment"

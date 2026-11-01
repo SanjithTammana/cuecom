@@ -14,7 +14,7 @@ redistributing their weights.
 Export Envision's packaged CNN and LightGBM assets (h5py is included in requirements):
 
 ```powershell
-& .\.venv\Scripts\python.exe envision_port.py export
+& .\.venv\Scripts\python.exe -m cuecom.perception.vision.envision export
 ```
 
 Download the three MediaPipe task bundles, using the existing atomic download helper:
@@ -62,8 +62,8 @@ overrides normal settings; it is also ignored. See [Gemini setup](GEMINI-SETUP.m
 
 ```powershell
 Copy-Item .env.example .env
-& .\.venv\Scripts\python.exe tools\audio_layer_lab.py devices
-& .\.venv\Scripts\python.exe cuecom_session.py --assessment
+& .\.venv\Scripts\python.exe -m apps.labs.audio_layer_lab devices
+& .\.venv\Scripts\python.exe -m apps.session --assessment
 ```
 
 Choose `--device N` only if the default microphone is wrong. Device numbers are machine-specific.
@@ -75,7 +75,7 @@ the previous alphabet/fingerspelling component, not full language translation. S
 Offline checks open no sensors and make no real provider calls:
 
 ```powershell
-& .\.venv\Scripts\python.exe -m unittest discover -s tools -p 'test_*.py'
+& .\.venv\Scripts\python.exe -m unittest discover -s tests -t .
 ```
 
 Fresh-clone source checks use the available Python environment; that does not certify a new

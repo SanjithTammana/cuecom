@@ -18,4 +18,4 @@ echo "3/4  YOLO person detector"
 echo "4/4  Sound, fingerspelling and speech models (large; cached for later)"
 "$PY" -c "from huggingface_hub import snapshot_download; snapshot_download('alkiskoudounas/voc2vec-hubert-ls-pt'); snapshot_download('abdollahhh/asl-sign-language-efficientnet-b0'); snapshot_download('Systran/faster-whisper-base.en')"
 
-echo "Done. Start cuecom with: .venv/bin/python cuecom_session.py --assessment"
+echo "Done. Start cuecom with: .venv/bin/python -m apps.session --assessment"

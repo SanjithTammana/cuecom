@@ -13,4 +13,4 @@ py -3.11 -m venv .venv
 .venv\Scripts\python.exe -c "import video, audio_text, retrieval, tts; print('cuecom imports OK')"
 
 Write-Host ''
-Write-Host 'Done. Prepare models (docs/SESSION-SETUP.md), then run: .\.venv\Scripts\python.exe cuecom_session.py --assessment'
+Write-Host 'Done. Prepare models (docs/SESSION-SETUP.md), then run: .\.venv\Scripts\python.exe -m apps.session --assessment'

@@ -6,11 +6,11 @@ modules. Anything marked **[his call]** is a placeholder until he specifies it.
 ## Files
 ```
 cuecom/
-├── transcribe.py      # Transcriber: open CPU speech-to-text (faster-whisper int8, base.en default)
-├── audio_text.py      # audio + Bayesian: VocalizationEncoder, VocalizationClassifier, AudioPipeline,
+├── cuecom/perception/speech/transcribe.py      # Transcriber: open CPU speech-to-text (faster-whisper int8, base.en default)
+├── cuecom/perception/audio/vocalization.py      # audio + Bayesian: VocalizationEncoder, VocalizationClassifier, AudioPipeline,
 │                      #   BayesianFusion (imports Transcriber)
-├── video.py           # VideoAnalyzer (YOLO + MediaPipe gesture/face, from message.txt) + EnvisionGesture
-├── run.py             # argparse + capture loop + OpenCV panel (message.txt interface) + JSON packet
+├── cuecom/perception/vision/video.py           # VideoAnalyzer (YOLO + MediaPipe gesture/face, from message.txt) + EnvisionGesture
+├── apps/live.py             # argparse + capture loop + OpenCV panel (message.txt interface) + JSON packet
 ├── config/likelihoods.json   # phrases, prior, P(observation | phrase) tables, decision rule  [his call]
 ├── data/vocalizations/       # <label>/*.wav folders and/or manifest CSVs (path,label); any number of datasets
 └── models/                   # downloaded .task files, trained vocalization classifier (git-ignored)
@@ -41,13 +41,13 @@ macOS build, and cuecom only uses its LightGBM model, loaded without the TensorF
   F1 is about 0.6–0.7, and the paper itself says to smooth over time rather than trust single frames.
 - Per-frame API we wrap: `LightGBMGestureModel.extract_features_from_frame(frame)` → `.predict(x)` →
   `label_encoder` (the same calls its own `RealtimeGestureDetector` makes inside its webcam loop). Our
-  loop stays in run.py.
+  loop stays in apps/live.py.
 
 ## Pipeline as built (Sanjith's diagram + agreed additions, 2026-10-24)
 ```
                       USER  →  MULTIMODAL INPUT
               ┌─────────────────┴──────────────────┐
-         VIDEO (video.py)                    AUDIO (audio_text.py, transcribe.py)
+         VIDEO (cuecom/perception/vision/video.py)                    AUDIO (cuecom/perception/audio/vocalization.py, cuecom/perception/speech/transcribe.py)
    EnvisionHGdetector                   voc2vec (frozen)          Whisper (faster-whisper)
    Holistic → kinematic features        embeddings →              transcript keywords
    → LightGBM → P(Gesture), smoothed    vocalization classifier   [addition: in prototype]
@@ -63,7 +63,7 @@ macOS build, and cuecom only uses its LightGBM model, loaded without the TensorF
                                 ▼
                  POSTERIOR DISTRIBUTION over intents
                                 ▼
-          SEMANTIC RETRIEVAL (retrieval.py)
+          SEMANTIC RETRIEVAL (cuecom/inference/retrieval.py)
           phrase database config/phrases.json, MiniLM vectors,
           P(intent | phrase) = tag (0.8) + embedding similarity (0.2)
                                 ▼
@@ -74,19 +74,19 @@ macOS build, and cuecom only uses its LightGBM model, loaded without the TensorF
                                 ▼
           USER CONFIRMATION: keys 1–3, 0 = none → logged to data/confirmations.jsonl
                                 ▼
-          TEXT-TO-SPEECH (tts.py, offline SAPI)  →  FINAL COMMUNICATION
+          TEXT-TO-SPEECH (cuecom/output/tts.py, offline SAPI)  →  FINAL COMMUNICATION
 ```
 
 ## Target pipeline (Sanjith's diagram, 2026-10-24) and build status
 | Stage | Module | Status |
 |---|---|---|
-| Video → Envision (Holistic → kinematic features → LightGBM → gesture detection) → visual evidence | `video.py` | built; tested on Envision's sample video |
+| Video → Envision (Holistic → kinematic features → LightGBM → gesture detection) → visual evidence | `cuecom/perception/vision/video.py` | built; tested on Envision's sample video |
 | Visual evidence → **initial distribution** | `BayesianFusion.visual_distribution` | built |
-| Audio → voc2vec (preprocess → embeddings → vocalization classification) → nonverbal audio evidence | `audio_text.py` | built; classifier needs real data and a label→distribution mapping |
+| Audio → voc2vec (preprocess → embeddings → vocalization classification) → nonverbal audio evidence | `cuecom/perception/audio/vocalization.py` | built; classifier needs real data and a label→distribution mapping |
 | **Bayesian update** (initial × audio evidence) → **posterior distribution** | `BayesianFusion.update` / `infer` | built (posterior is order-invariant) |
-| Semantic retrieval: phrase database + vector embeddings → phrase ranking → top interpretations | `retrieval.py` | built; 178 phrases |
-| User confirmation | keys 1–3 / 0 in `run.py`; web board later | built (keys) |
-| Text-to-speech | `tts.py` (offline SAPI) | built |
+| Semantic retrieval: phrase database + vector embeddings → phrase ranking → top interpretations | `cuecom/inference/retrieval.py` | built; 178 phrases |
+| User confirmation | keys 1–3 / 0 in `apps/live.py`; web board later | built (keys) |
+| Text-to-speech | `cuecom/output/tts.py` (offline SAPI) | built |
 Not in the diagram but in the current code: MediaPipe GestureRecognizer (message.txt) as a video source, Whisper
 transcript as an audio source. Both are kept until Sanjith says otherwise.
 
@@ -97,7 +97,7 @@ transcript as an audio source. Both are kept until Sanjith says otherwise.
 - The output is the updated **distribution only**: no threshold, no abstain, no learn_likelihoods, and not
   self-correcting.
 - The final answer comes from a separate **classical ML model** reading the distribution. In the built
-  pipeline that is the phrase ranker in `retrieval.py`: a formula until confirmations are logged, then
+  pipeline that is the phrase ranker in `cuecom/inference/retrieval.py`: a formula until confirmations are logged, then
   logistic regression.
 
 ## Bayesian fusion (original v1 text, kept for the math)
@@ -118,7 +118,7 @@ transcript as an audio source. Both are kept until Sanjith says otherwise.
 
 ## Interfaces (the contract between files)
 ```python
-# video.py
+# cuecom/perception/vision/video.py
 VideoAnalyzer(use_yolo=True, use_envision=True).analyze(frame_bgr, ts_ms) -> {
   'timestamp_ms': int, 'people': [{'bbox': [x1,y1,x2,y2], 'score': float}],
   'gestures': [{'label': str, 'score': float, 'alternatives': [{'label','score'}]}],
@@ -128,7 +128,7 @@ VideoAnalyzer(use_yolo=True, use_envision=True).analyze(frame_bgr, ts_ms) -> {
                'label': 'Gesture'|'NoGesture'}}
 VideoAnalyzer.close()
 
-# audio_text.py
+# cuecom/perception/audio/vocalization.py
 AudioPipeline(enabled, whisper_size='base.en', voc_classifier_path=...).start() / .get() / .close()
   .get() -> {'transcript': str, 'timestamp': float|None, 'status': str, 'rms': float,
              'vocalization': {'status': 'ok'|'untrained'|'silence'|'disabled'|'error: ...',
@@ -141,15 +141,15 @@ BayesianFusion.from_json(path).infer(visual: dict, audio: dict) -> {
   'evidence': {source: {'used': bool, 'informative': bool, ...}}}
 BayesianFusion.visual_distribution(visual) / .update(initial, audio)
 
-# retrieval.py, tts.py
+# cuecom/inference/retrieval.py, cuecom/output/tts.py
 PhraseRanker(PhraseDatabase(), intents).rank(posterior, k=3) -> [{'text', 'intent', 'score', 'match'}]
 PhraseRanker.log(posterior, shown, chosen)   # data/confirmations.jsonl, for train-ranker
 Speaker().say(text)
 
 # CLI
-python audio_text.py train --data data/vocalizations [more dirs/manifests] --out models/voc_clf.joblib
-python audio_text.py classify some.wav
-python run.py --camera 0 --audio | --video sample.mp4 --no-audio [--no-yolo] [--no-envision]
+python -m cuecom.perception.audio.vocalization train --data data/vocalizations [more dirs/manifests] --out models/voc_clf.joblib
+python -m cuecom.perception.audio.vocalization classify some.wav
+python -m apps.live --camera 0 --audio | --video sample.mp4 --no-audio [--no-yolo] [--no-envision]
 ```
 
 ## Open for Sanjith

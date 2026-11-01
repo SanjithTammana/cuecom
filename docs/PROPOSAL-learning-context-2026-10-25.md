@@ -8,7 +8,7 @@ request, model installation, sensor capture or production-code change was made f
 
 ## 1. What the current audio test actually tests
 
-`audio_layer_lab.py live --record` matches segmented sounds against an existing enrolled acoustic
+`apps/labs/audio_layer_lab.py live --record` matches segmented sounds against an existing enrolled acoustic
 profile and saves the input locally. The quiet calibration estimates the room's noise floor; it
 does not learn meaning. The names `hum` and `ah` are sound-class tags, not words or intentions.
 Random sounds, talking, coughs and background noise are useful tests of segmentation and rejection.
@@ -115,7 +115,7 @@ to be the limiting condition. Do not claim that a speech VAD isolates every nonv
 
 ## 5. Conversation context and transcription
 
-Current `transcribe.py` collapses Whisper segments to a string. Its Meta adapter strips diarized
+Current `cuecom/perception/speech/transcribe.py` collapses Whisper segments to a string. Its Meta adapter strips diarized
 prefixes. The main runner appends each new transcript as a partner turn and supplies only a small
 history to the composer. These interfaces must change if multiple people contribute context.
 
@@ -164,7 +164,7 @@ a belief over anonymous motifs, not a fabricated calibrated posterior over inten
 
 Use a hybrid comparison: local retrieval remains a baseline and fallback; Gemini can generate
 or rerank contextually appropriate candidate utterances from a compact, provenance-bearing packet.
-The present `llm.py` already sends a JSON-like frame but hard-codes three options; it is not yet
+The present `cuecom/llm/composer.py` already sends a JSON-like frame but hard-codes three options; it is not yet
 the proposed four-option pipeline. Its configured Gemini profile is not the active provider.
 
 Proposed input fields:
@@ -241,11 +241,11 @@ user evidence, and do not use synthetic-only results as real-user communication 
 
 ## 9. Scope boundaries
 
-Likely seams: `person_selection.py` / the tracker adapter for persistent role recovery; a new shared
+Likely seams: `cuecom/perception/vision/person_lock.py` / the tracker adapter for persistent role recovery; a new shared
 observation recorder rather than merging two unrelated lab logs; an optional discovery module
-over saved features; `transcribe.py` and conversation state for structured turns; the fusion
-interface only after grounded likelihoods exist; `llm.py`, configuration and selection UI for four
-suggestions; reuse `tts.py`. Implement these as bounded comparisons, not an all-at-once rewrite.
+over saved features; `cuecom/perception/speech/transcribe.py` and conversation state for structured turns; the fusion
+interface only after grounded likelihoods exist; `cuecom/llm/composer.py`, configuration and selection UI for four
+suggestions; reuse `cuecom/output/tts.py`. Implement these as bounded comparisons, not an all-at-once rewrite.
 
 This document is the reviewable proposal. Existing test apps, model weights, enrollment profiles,
 fusion, cloud configuration and recordings remain unchanged. No Gemini request has been made.

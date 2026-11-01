@@ -65,7 +65,7 @@ Local packet creation and model preparation never call Meta.
 For an explicit saved-file smoke test (this uploads the named file to Meta):
 
 ```powershell
-& .\.venv\Scripts\python.exe transcribe.py path\to\short-clip.wav --meta
+& .\.venv\Scripts\python.exe -m cuecom.perception.speech.transcribe path\to\short-clip.wav --meta
 ```
 
 Use a recording no longer than 30 seconds. The legacy CLI retains its Whisper

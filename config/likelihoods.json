@@ -337,7 +337,7 @@
       "weight": 1.0
     },
     "head": {
-      "note": "[his call] Neutral until mapped. Head nod/shake from MediaPipe head pose (video.py HeadGesture). To map, raise P(label | intent) for the intent a label signals, e.g. nod for Yes, shake for No.",
+      "note": "[his call] Neutral until mapped. Head nod/shake from MediaPipe head pose (cuecom/perception/vision/video.py HeadGesture). To map, raise P(label | intent) for the intent a label signals, e.g. nod for Yes, shake for No.",
       "labels": [
         "nod",
         "shake",
@@ -393,7 +393,7 @@
       }
     },
     "arm": {
-      "note": "[his call] Neutral until mapped. The user's raised-hand hold and wave from tracker wrist keypoints (video.py PersonTracker.arm_signals).",
+      "note": "[his call] Neutral until mapped. The user's raised-hand hold and wave from tracker wrist keypoints (cuecom/perception/vision/video.py PersonTracker.arm_signals).",
       "labels": [
         "hold",
         "wave",

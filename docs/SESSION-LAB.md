@@ -3,7 +3,7 @@
 Run from the repository root with the project environment:
 
 ```powershell
-& .\.venv\Scripts\python.exe cuecom_session.py --record
+& .\.venv\Scripts\python.exe -m apps.session --record
 ```
 
 This opens one live feature window: tracked people, selected communicator's face/pose/hands, raw measurements, audio level/event state, anonymous motifs, ASL alphabet state, transcript context and up to four possibilities. Capture runs independently of inference. The visible landmarks belong to the analyzed frame; the preview can lag capture on this CPU. Recorded raw video has host-read timestamps in `capture_times.jsonl`; MP4 frame rate alone is not the capture clock. Start with a quiet room for the first second of audio calibration and a neutral face for the first 1.5 seconds of visible face measurements.
@@ -16,11 +16,11 @@ Try each layer before fusion:
 
 ```powershell
 # Visual tracking and old ASL reader; no microphone or transcription.
-& .\.venv\Scripts\python.exe cuecom_session.py --no-audio --no-asr --no-tts
+& .\.venv\Scripts\python.exe -m apps.session --no-audio --no-asr --no-tts
 # Audio alone: previous independent waveform/template lab remains available.
-& .\.venv\Scripts\python.exe tools\audio_layer_lab.py live --record
+& .\.venv\Scripts\python.exe -m apps.labs.audio_layer_lab live --record
 # Full local session, with speech disabled while inspecting results.
-& .\.venv\Scripts\python.exe cuecom_session.py --record --no-tts
+& .\.venv\Scripts\python.exe -m apps.session --record --no-tts
 ```
 
 The old audio lab's named-template enrollment is still a diagnostic baseline. The new session requires no word/sound enrollment: it discovers recurring anonymous sound/visual patterns, then learns message associations from explicit confirmations. Explore varied sounds and gestures, rest between trials, and include background speech/other people as negative-control conditions. Repeating similar inputs tests repeatability; random inputs alone do not establish that a pattern carries a particular meaning. Existing seed phrases are candidate wording, never labels inferred from a sound. Use `F` to type a new message and confirm it when the candidate pool lacks what you mean.
@@ -55,7 +55,7 @@ Private output is under `.scratch_session/<profile>/`: local person signature, m
 Offline replay opens no sensors:
 
 ```powershell
-& .\.venv\Scripts\python.exe cuecom_session.py --video .scratch_video\two_people.mp4 --headless --max-frames 48 --no-asl --no-asr --no-tts --profile replay
+& .\.venv\Scripts\python.exe -m apps.session --video .scratch_video\two_people.mp4 --headless --max-frames 48 --no-asl --no-asr --no-tts --profile replay
 ```
 
 Optional `--wav path.wav --audio-offset 0` aligns a WAV to source-video seconds using the supplied offset; it cannot recover missing synchronization metadata. Use a separate replay profile. Replay validates code/model execution, not live latency or user communication accuracy.

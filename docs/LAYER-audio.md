@@ -19,7 +19,7 @@ One `AudioEvidence` per detected sound event, emitted once, when the event ends:
 }
 ```
 
-- Labels are the **user's own** sound classes (enrolled, like `signs.py`), plus two negative labels the
+- Labels are the **user's own** sound classes (enrolled, like `cuecom/perception/vision/signs.py`), plus two negative labels the
   model always has: `speech` (anyone talking, including the partner) and `other` (background, cough, noise).
 - Label → intent is a separate, user-editable table (`P(label | intent)`), built the same way
   `BayesianFusion.add_sign_source` builds the sign table: the mapped intent gets `peak`, other intents 1,
@@ -78,8 +78,8 @@ A failed comparison is not a successful model result.
 
 ## 4. Standalone microphone test lab (added after Sanjith requested audio readiness)
 
-This is an independent test surface: `audio_layer.py` and `tools/audio_layer_lab.py`. It does not
-change `audio_text.py`, `run.py`, the benchmark harness, video selection, fusion or TTS. Its output
+This is an independent test surface: `cuecom/perception/audio/events.py` and `apps/labs/audio_layer_lab.py`. It does not
+change `cuecom/perception/audio/vocalization.py`, `apps/live.py`, the benchmark harness, video selection, fusion or TTS. Its output
 is sound-type template matches and explicit rejection, not communication intent. **A single
 microphone cannot identify who made a sound.** The panel and every event say speaker/person
 unknown. Another person making a similar enrolled sound may match the same class. Selecting a
@@ -90,9 +90,9 @@ person in the video lab does not attribute microphone events to that person.
 In PowerShell:
 
 ```powershell
-& .\.venv\Scripts\python.exe tools\audio_layer_lab.py devices
-& .\.venv\Scripts\python.exe tools\audio_layer_lab.py enroll --labels hum ah --takes 3
-& .\.venv\Scripts\python.exe tools\audio_layer_lab.py live --record
+& .\.venv\Scripts\python.exe -m apps.labs.audio_layer_lab devices
+& .\.venv\Scripts\python.exe -m apps.labs.audio_layer_lab enroll --labels hum ah --takes 3
+& .\.venv\Scripts\python.exe -m apps.labs.audio_layer_lab live --record
 ```
 
 `hum` and `ah` are example sound names: choose your own distinct labels, not presumed intentions.
@@ -163,8 +163,8 @@ raw class scores, rejection reason and embedding time. `person_id` is always nul
 Replay a local WAV through the same segmentation/encoding/classification path:
 
 ```powershell
-& .\.venv\Scripts\python.exe tools\audio_layer_lab.py wav path\to\capture.wav --headless
-& .\.venv\Scripts\python.exe tools\test_audio_layer.py
+& .\.venv\Scripts\python.exe -m apps.labs.audio_layer_lab wav path\to\capture.wav --headless
+& .\.venv\Scripts\python.exe -m tests.test_audio_layer
 ```
 
 Replay does not open the microphone. Without a profile, `--without-profile` tests segmentation

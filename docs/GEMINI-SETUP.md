@@ -32,7 +32,7 @@ Syntactic checks cannot prove that a fluent grounded paraphrase contains no inve
 Offline verification, with no real API key or cloud upload:
 
 ```powershell
-& .\.venv\Scripts\python.exe tools\test_gemini_context.py
+& .\.venv\Scripts\python.exe -m tests.test_gemini_context
 ```
 
 The suite exercises mocked native requests, output validation, configuration boundaries, conversation revisions/TTS echo exclusion, and structured ASR. It does not certify a live Google account, quota, latency, diarization accuracy, or communication accuracy.

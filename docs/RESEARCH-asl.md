@@ -80,7 +80,7 @@ Ladder and time estimates are **[J]**; total ~13-15 h with slack, so cut item 6 
 | # | Step | Time |
 |---|---|---|
 | 1 | Define the vocabulary: ~10 signs max (YES, NO, HELP, MORE, STOP, EAT, DRINK, BATHROOM, PLEASE, THANK-YOU, ALL-DONE). Have a Deaf/native signer or ASL teacher approve the exact sign forms and one-handed variants before recording. | 1 h + waiting on the signer |
-| 2 | Landmark capture tool on top of `video.py`: record 3-5 takes per sign plus ~60 s of "no sign" activity; store raw hand (2x21x3), pose shoulders/elbows, nose and face-reference points per frame with timestamps. | 2 h |
+| 2 | Landmark capture tool on top of `cuecom/perception/vision/video.py`: record 3-5 takes per sign plus ~60 s of "no sign" activity; store raw hand (2x21x3), pose shoulders/elbows, nose and face-reference points per frame with timestamps. | 2 h |
 | 3 | Normalization: translate to a body anchor (shoulder midpoint or per-frame center of mass), scale by shoulder width, mirror left-handers, interpolate dropped hand frames, resample to fixed length (e.g. 16). Keep face-relative features (hand-to-nose/mouth distances) because PopSign's own errors came from their absence. | 1.5 h |
 | 4 | Recognizer v0 = kNN/DTW over enrolled templates (approach c). Leave-one-take-out accuracy report per sign and a confusion matrix. | 2 h |
 | 5 | Window detector + "no sign" class + temperature calibration + smoothing (section 6). Test on 5 minutes of mixed live signing and idle movement. | 3 h |
@@ -96,11 +96,11 @@ Risks to flag in the demo plan [J]: signer variation (the enrolling user is the 
 
 ## 6. Output and calibration for the Bayesian layer
 
-Input: per-frame landmarks from `video.py` (hands, face, pose). Output: `P(sign | window)` over `{core signs..., no_sign}` per hop. [J] throughout, except where cited.
+Input: per-frame landmarks from `cuecom/perception/vision/video.py` (hands, face, pose). Output: `P(sign | window)` over `{core signs..., no_sign}` per hop. [J] throughout, except where cited.
 
 1. **Include `no_sign` as a class** with its own training windows (idle hands, adjusting glasses, gesturing while speaking, off-vocabulary signs). Without it a softmax must pick a core sign for every window. PopSign's softmax has no such class, since it is designed around a user holding a button to aim [E, S2].
 2. **Calibrate with temperature scaling** on held-out takes (Guo et al., ICML 2017; from prior knowledge, **not fetched**): fit one scalar T on validation log-loss, then check reliability on a separate take. With 3-5 enrollment takes there is no spare data, so use leave-one-take-out predictions to fit T. For kNN/DTW, convert distances to scores with `exp(-d/tau)` including a no-sign distance threshold, then fit tau the same way.
-3. **Make it an observation model.** Fusion wants `P(observation | intent)`. Treat the window posterior as a likelihood by dividing by the classifier's training class prior, then map sign to intent through a small table (YES->Yes, MORE->Want/More, HELP->Help, ...) and floor the likelihood (e.g. max with 0.02) so one mistaken window cannot veto the other detectors. Apply a power (tempering) of <1 if the detector looks overconfident. (This follows the "calibrated soft evidence" framing of the existing architecture; check against how other detectors are weighted in `meaning.py`.)
+3. **Make it an observation model.** Fusion wants `P(observation | intent)`. Treat the window posterior as a likelihood by dividing by the classifier's training class prior, then map sign to intent through a small table (YES->Yes, MORE->Want/More, HELP->Help, ...) and floor the likelihood (e.g. max with 0.02) so one mistaken window cannot veto the other detectors. Apply a power (tempering) of <1 if the detector looks overconfident. (This follows the "calibrated soft evidence" framing of the existing architecture; check against how other detectors are weighted in `cuecom/inference/meaning.py`.)
 4. **Temporal smoothing**: exponential moving average of log-probabilities over the last 3-5 hops, or a 2-3 state HMM (idle -> sign onset -> held) with a dwell time of ~0.5-1 s. Emit one evidence event per detected sign (peak-picked with a 0.6 s refractory period, borrowed from BSL-1K's NMS window [S18]) rather than every hop, so a held or repeated sign does not multiply the same evidence.
 5. **Expose confidence honestly**: report the no-sign probability and entropy, and abstain when the top sign is under a threshold chosen on enrollment data.
 6. **Metrics to track**: per-sign precision/recall, false-trigger rate per minute of idle video (more important than accuracy for a live demo), expected calibration error on held-out takes.
@@ -181,4 +181,4 @@ The coordinator asked for the state of the art, public availability, and a feasi
 - [S24] SignGemma secondary coverage: https://multilingual.com/google-signgemma-on-device-asl-translation/ ; https://tech.slator.com/?p=106104
 - [S25] Desai et al., Systemic Biases in Sign Language AI Research: https://arxiv.org/pdf/2403.02563
 - [S26] Bragg et al., Sign Language Recognition, Generation, and Translation: An Interdisciplinary Perspective: https://arxiv.org/pdf/1908.08597
-- Local files read: `docs/RESEARCH-datasets.md`, `video.py` (MediaPipe hand and face landmarkers, YOLO11n-pose).
+- Local files read: `docs/RESEARCH-datasets.md`, `cuecom/perception/vision/video.py` (MediaPipe hand and face landmarkers, YOLO11n-pose).
