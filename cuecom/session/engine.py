@@ -1,0 +1,175 @@
+"""Sensor-independent evidence, confirmation and suggestion state for a session.
+
+Collaborators come in through the constructor (see cuecom.core.interfaces): a `Learner`, an optional
+`Speaker` and an optional `Tracer`. Every decision is written to the trace.
+"""
+from collections import deque
+from copy import deepcopy
+from dataclasses import replace
+import json
+from pathlib import Path
+import re
+import uuid
+
+from cuecom.context.state import ConversationState
+from cuecom.core.trace import NullTrace
+from cuecom.core.types import Option
+from cuecom.learning.motifs import MotifLearner
+
+
+class SessionEngine:
+    def __init__(self, session_id, learner=None, speaker=None, root=None, trace=None):
+        self.session_id, self.speaker = session_id, speaker
+        self.learner = learner if learner is not None else MotifLearner()
+        self.trace = trace if trace is not None else NullTrace()
+        self.context = ConversationState()
+        self.events = deque(maxlen=128)
+        self.evidence_revision = 0
+        self.person_id, self.owned = None, False
+        self.clock_valid = True
+        self.spelled, self.options, self.option_packet = '', [], None
+        self.rejected, self.last_discovery = [], {}
+        self.rejected_wording = deque(maxlen=32)
+        self.status = 'Discovering patterns; meanings require confirmation'
+        self.phrases = ['Yes.', 'No.', 'I need help.', 'I want a break.']
+        if root:
+            path = Path(root) / 'config/phrases.json'
+            if path.is_file():
+                data = json.loads(path.read_text(encoding='utf-8'))
+                self.phrases = list(dict.fromkeys(self.phrases + [p['text'] for p in data.get('phrases', [])
+                    if isinstance(p.get('text'), str) and 0 < len(p['text']) <= 160]))
+
+    def set_role(self, person_id, owned):
+        if self.person_id is not None and person_id != self.person_id:
+            self.trace.emit('engine', 'role_reset', previous=self.person_id, person_id=person_id)
+            self.events.clear()
+            self.options, self.option_packet, self.spelled = [], None, ''
+            self.context = ConversationState()
+            self.evidence_revision += 1
+        self.person_id, self.owned = person_id, bool(owned)
+
+    def observe(self, event):
+        event = deepcopy(event)
+        event['context_id'] = self.context.revision
+        result = self.learner.observe(event)
+        self.events.append(event)
+        self.evidence_revision += 1
+        self.last_discovery = result
+        self.trace.emit('engine', 'observe', event_id=event['event_id'], modality=event['modality'],
+                        person_id=event.get('person_id'), t_start=event['t_start'], t_end=event['t_end'],
+                        status=result.get('status'), motif_id=result.get('motif_id'))
+        # Only measured overlap on the shared clock: no nearest-neighbor semantic pairing.
+        if event['modality'] in {'audio', 'video'}:
+            opposite = 'video' if event['modality'] == 'audio' else 'audio'
+            for old in reversed(list(self.events)[:-1]):
+                if old['modality'] != opposite:
+                    continue
+                audio, video = (event, old) if event['modality'] == 'audio' else (old, event)
+                pair = self.learner.pair(audio, video)
+                if pair.get('pair_status') == 'paired':
+                    paired = pair['event']
+                    if not any(e['event_id'] == paired['event_id'] for e in self.events):
+                        self.events.append(paired)
+                        self.trace.emit('engine', 'paired', event_id=paired['event_id'],
+                                        source_event_ids=paired.get('source_event_ids'))
+                    break
+        return result
+
+    def version(self):
+        return (self.context.revision, self.evidence_revision, self.person_id, self.owned,
+                self.clock_valid, self.spelled)
+
+    def packet(self, now_s):
+        active = [e for e in self.events if e['person_id'] == self.person_id and
+                  e['ownership_valid'] and e['clock_valid'] and 0 <= now_s - e['t_end'] <= 3]
+        ids = [e['event_id'] for e in active] if self.owned and self.clock_valid else []
+        belief = self.learner.posterior(ids, now_s)
+        history = self.context.snapshot(now_s)
+        tokens = set(re.findall(r'\w+', ' '.join(t['text'] for t in history['finalized_turns'][-3:]).lower()))
+        learned = [i['label'] for i in belief.get('items', []) if i['label'] != '(unknown)']
+        # Lexical retrieval only; this ordering carries no posterior confidence.
+        ranked = sorted(self.phrases, key=lambda text: -len(tokens & set(re.findall(r'\w+', text.lower()))))
+        candidates = list(dict.fromkeys(learned + ranked[:12] + ([self.spelled] if self.spelled else [])))[:16]
+        rejected_text = {r['text'] for r in self.rejected_wording if set(r['event_ids']) & set(ids)}
+        candidates = [text for text in candidates if text not in rejected_text or text == self.spelled]
+        return {'session_id': self.session_id, 'context_revision': self.context.revision,
+                'event_ids': ids, 'user_role': {'person_id': self.person_id, 'ownership_valid': self.owned},
+                'belief': belief, 'quality': {'clock_valid': self.clock_valid,
+                    'scores_calibrated': False, 'audio_speaker_default': 'unknown'},
+                'conversation': history, 'candidate_pool': candidates, 'spelled': self.spelled,
+                'rejected_option_ids': self.rejected[-32:]}
+
+    def present(self, result, packet, version, now_s=None):
+        fresh = (now_s is None or all(any(e['event_id'] == identity and 0 <= now_s - e['t_end'] <= 3
+                                        for e in self.events) for identity in packet['event_ids']))
+        if version != self.version() or not fresh:
+            self.status = 'Discarded stale suggestions; R refreshes'
+            self.trace.emit('engine', 'stale', reason='version' if version != self.version() else 'expired',
+                            event_ids=packet['event_ids'])
+            return False
+        self.options = [replace(Option.from_dict(o), option_id=uuid.uuid4().hex).to_dict() for o in result['options']]
+        self.option_packet = deepcopy(packet)
+        self.status = 'Possibilities awaiting your confirmation; R refreshes'
+        self.trace.emit('engine', 'present', event_ids=packet['event_ids'],
+                        options=[{k: o[k] for k in ('option_id', 'kind', 'text')} for o in self.options])
+        return True
+
+    def suggest_local(self, now_s):
+        packet = self.packet(now_s)
+        if self.spelled:
+            options = [{'text': self.spelled, 'kind': 'message', 'evidence_ids': []}]
+        elif packet['event_ids']:
+            options = [{'text': text, 'kind': 'message', 'evidence_ids': packet['event_ids']}
+                       for text in packet['candidate_pool'][:4]]
+        else:
+            options = [{'text': 'Please show or spell what you want to say.', 'kind': 'clarify', 'evidence_ids': []}]
+        self.present({'options': options}, packet, self.version())
+
+    def confirm(self, index, now_s):
+        if not 0 <= index < len(self.options):
+            return None
+        option = self.options[index]
+        if option['kind'] != 'message':
+            self.status = 'Clarification prompt: provide a gesture, spelling or typed message'
+            return None
+        packet = self.option_packet
+        if not self.owned or packet['user_role']['person_id'] != self.person_id:
+            self.status = 'Recover/confirm the communicator before selecting a message'
+            return None
+        return self.confirm_text(option['text'], option.get('evidence_ids', []), now_s)
+
+    def confirm_text(self, text, event_ids, now_s):
+        text = str(text).strip()[:500]
+        if not text:
+            return None
+        outcome = self.learner.confirm(event_ids, text, now_s) if event_ids else {'status': 'text_only_no_training'}
+        self.context.confirm_user(text, outcome.get('evidence_ids', []), now_s)
+        if self.speaker:
+            self.context.record_tts(text, now_s)
+            self.speaker.say(text)
+        self.options, self.option_packet, self.spelled = [], None, ''
+        self.status = 'Confirmed: ' + text + ' | ' + outcome['status']
+        self.trace.emit('engine', 'confirm', text=text, event_ids=list(event_ids), learning=outcome['status'],
+                        spoken=bool(self.speaker))
+        return outcome
+
+    def reject(self, now_s):
+        ids = [o['option_id'] for o in self.options]
+        for option in self.options:
+            self.rejected_wording.append({'text': option['text'],
+                'event_ids': (self.option_packet or {}).get('event_ids', [])})
+        self.context.reject_suggestions(ids, now_s)
+        self.learner.reject(ids, event_ids=(self.option_packet or {}).get('event_ids', []), at_s=now_s)
+        self.rejected.extend(ids)
+        self.options, self.option_packet = [], None
+        self.status = 'Rejected wording; no intent-negative label trained'
+        self.trace.emit('engine', 'reject', option_ids=ids)
+
+    def undo(self):
+        undone = self.learner.undo()
+        if undone:
+            self.evidence_revision += 1
+            self.options, self.option_packet = [], None
+        self.trace.emit('engine', 'undo', undone=bool(undone))
+        self.status = 'Undid latest learned association (spoken audio cannot be recalled)' if undone else 'No association to undo'
+        return undone

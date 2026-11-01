@@ -1,6 +1,6 @@
 # Vocalization datasets
 
-Training data for the voc2vec vocalization classifier (`audio_text.py`). Audio files here are not
+Training data for the voc2vec vocalization classifier (`cuecom/perception/audio/vocalization.py`). Audio files here are not
 tracked or shipped; add whatever dataset you pick. Nothing is hard-coded to one dataset.
 
 ## Layout
@@ -31,8 +31,8 @@ assistive HCI). It is not downloaded here yet.
 ## Train
 
 ```
-python audio_text.py train --data data/vocalizations/<dataset> [more dirs or csvs] --out models/voc_clf.joblib
-python audio_text.py classify some.wav
+python -m cuecom.perception.audio.vocalization train --data data/vocalizations/<dataset> [more dirs or csvs] --out models/voc_clf.joblib
+python -m cuecom.perception.audio.vocalization classify some.wav
 ```
 
 `train` prints stratified k-fold UAR (k = min(10, smallest class size)). Clips from the same speaker

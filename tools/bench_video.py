@@ -18,7 +18,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from envision_port import EnvisionCNN, EnvisionLGBM, SEQ_CNN  # noqa: E402
+from cuecom.perception.vision.envision import EnvisionCNN, EnvisionLGBM, SEQ_CNN  # noqa: E402
 
 MODELS = ROOT / 'models'
 

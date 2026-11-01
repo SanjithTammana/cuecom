@@ -1,14 +1,14 @@
 # Video layer: independent test lab
 
 Sanjith's boundary: test layers separately, then he decides next steps. This lab does not change
-`run.py`, the live `video.py`, audio, fusion, mapping, phrase ranking or TTS. No environment upgrade.
+`apps/live.py`, the live `cuecom/perception/vision/video.py`, audio, fusion, mapping, phrase ranking or TTS. No environment upgrade.
 
 ## Test it
 
 Run in PowerShell:
 
 ```powershell
-& .\.venv\Scripts\python.exe tools\video_layer_lab.py --camera 0 --record
+& .\.venv\Scripts\python.exe -m apps.labs.video_layer_lab --camera 0 --record
 ```
 
 This opens **live tracking while recording**: a body skeleton, face points/eye and mouth contours,
@@ -52,7 +52,7 @@ To inspect just one channel, append `--channels face`, `--channels pose` or `--c
 that printed analysis command. For a live **feature preview** of one channel:
 
 ```powershell
-& .\.venv\Scripts\python.exe tools\video_layer_lab.py --camera 0 --channels face
+& .\.venv\Scripts\python.exe -m apps.labs.video_layer_lab --camera 0 --channels face
 ```
 
 All three channels are available live; use `--channels face`, `--channels pose` or `--channels hands`

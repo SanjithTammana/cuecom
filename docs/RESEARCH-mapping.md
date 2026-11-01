@@ -13,7 +13,7 @@ Read-only research for Sanjith's decision; nothing here was run on cuecom's data
    observer-error-versus-truth split is the Dawid-Skene model, S14]
 2. **Keep the 8 intents as the backbone, add `none`, and put the precision in the referent.** The clinical standard taxonomy (Communication
    Matrix) has only 24 messages and they are generic ("requests an object", "directs attention to something") [S9]. Specific meaning
-   ("the water") comes from the referent slot that `meaning.py` already has. [E for the taxonomy, J for the conclusion]
+   ("the water") comes from the referent slot that `cuecom/inference/meaning.py` already has. [E for the taxonomy, J for the conclusion]
 3. **No dataset gives usable P(signal | intent) for this user.** ReCANVo and CNVVE give vocalization base rates and class vocabularies; MIntRec2.0
    is scripted TV dialogue by typical speakers. Use them for class names and base rates, not for the numbers. [E, section 2]
 4. **Numbers come from a verbal-anchor elicitation (about 15 min) smoothed with a Dirichlet pseudo-count, then updated with 5 enrollment trials per signal.**
@@ -37,7 +37,7 @@ Read-only research for Sanjith's decision; nothing here was run on cuecom's data
 - Clinical "reliability" is partner consensus plus confirmation, not a likelihood. No source gives a numeric threshold for admitting a
   signal to a dictionary. The closest honest analogue is enrollment hit rate (section 3.3) plus cuecom's existing confirm key. [E for what exists, J for the analogue]
 - Partners decode in context. Interpretation depends on the partner's knowledge of the situation (Porter [S6]), which is the argument for
-  keeping partner-question context as an input to the intent prior (already in `meaning.py`).
+  keeping partner-question context as an input to the intent prior (already in `cuecom/inference/meaning.py`).
 - A 2026 CHI paper (AllyAAC) shows the same personalisation pattern in ML: participants chose their own 2-4 gestures and meanings, each recorded at least
   3 times plus idle/rest trials; the model used 3-20 annotated examples per category; the whole process took about 30 minutes per participant; F1 rose from about 60%
   (rule-based baseline) to over 85% (pretrained transformers) [S7]. The paper also says personalised modelling is needed and that atypical gestures can differ even for the same intent. [E]
@@ -145,11 +145,11 @@ T_s[k, r] = sum_p D_s[k, p] * C_s[p, r]                   # the table BayesianFu
 **Verdict** [J]:
 - Do not swap the backbone. The 8 intents already sit at Matrix levels II-IV, so a taxonomy swap would change names, not coverage.
 - Add `none` (required for the filter and for self-talk), and optionally `Greet` (wave has a natural home there) and `More/again`. Each added intent needs a signal in `D` and tagged phrases in the 178-phrase database, so add one only if you will demo it.
-- "Precise, complex meaning" is not more intents. It is `(function, referent)`. Even the clinical standard stops at 24 generic messages; "the water" is the argument. `meaning.py` already factorises this way (`NEEDS_REFERENT`, templates, `ReferentFilter`). Labelling each intent with its Matrix reason (Refuse / Obtain / Engage / Inform) gives a shared vocabulary for the write-up.
+- "Precise, complex meaning" is not more intents. It is `(function, referent)`. Even the clinical standard stops at 24 generic messages; "the water" is the argument. `cuecom/inference/meaning.py` already factorises this way (`NEEDS_REFERENT`, templates, `ReferentFilter`). Labelling each intent with its Matrix reason (Refuse / Obtain / Engage / Inform) gives a shared vocabulary for the write-up.
 
 ## 5. Recommended mapping layer for the demo
 
-**Backbone.** Keep the 8 intents + `none` (+ `Greet` if wave is demoed). Tag each with its Matrix reason in the config. Referents stay in `meaning.py`.
+**Backbone.** Keep the 8 intents + `none` (+ `Greet` if wave is demoed). Tag each with its Matrix reason in the config. Referents stay in `cuecom/inference/meaning.py`.
 
 **Data flow.**
 
@@ -231,4 +231,4 @@ Dictionary view: 30 min. Adding `none` (and `Greet`): 30-60 min including phrase
 - [S21] Light's four purposes (secondary summaries): https://praacticalaac.org/?wpfb_dl=51 ; https://thinksmartbox.com/news/getting-started-with-aac-competencies/
 - [S22] CSBS (Wetherby and Prizant), cluster names: https://txautism.net/evaluations/communication-and-symbolic-behavior-scales
 - [S23] Imperative versus declarative pointing (Bates, Camaioni, Volterra 1975, via secondary): https://pmc.ncbi.nlm.nih.gov/articles/PMC2043155 ; https://www.eva.mpg.de/documents/Wiley-Blackwell/Tomasello_New_ChildDev_2007_1554823.pdf
-- Local files read: `config/likelihoods.json`, `audio_text.py` (BayesianFusion), `meaning.py` (MeaningComposer), `docs/PLAN.md`, `docs/RESEARCH-interpretation.md`.
+- Local files read: `config/likelihoods.json`, `cuecom/perception/audio/vocalization.py` (BayesianFusion), `cuecom/inference/meaning.py` (MeaningComposer), `docs/PLAN.md`, `docs/RESEARCH-interpretation.md`.

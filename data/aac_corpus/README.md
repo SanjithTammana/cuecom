@@ -9,7 +9,7 @@ were using an AAC device. Files are unmodified copies of `sent_{train,dev,test}_
   Modeling using Crowdsourcing and Large Data Sources.* EMNLP 2011, pp. 700–711.
 - License: CC BY 4.0.
 
-**How it enters the phrase database.** Run `python retrieval.py import-corpus <files> --source vertanen2011`.
+**How it enters the phrase database.** Run `python -m cuecom.inference.retrieval import-corpus <files> --source vertanen2011`.
 Each message is tagged with the intent of its nearest hand-written seed phrase, and kept only if the cosine
 is ≥ 0.6 and beats every other intent by ≥ 0.05. Case- and punctuation-duplicates are dropped.
 

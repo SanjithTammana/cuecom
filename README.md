@@ -35,7 +35,7 @@ The session modes require prepared local models and do not download them implici
 
 ### Recorded assessment (three options to confirm)
 ```powershell
-& .\.venv\Scripts\python.exe cuecom_session.py --assessment
+& .\.venv\Scripts\python.exe -m apps.session --assessment
 ```
 In the OpenCV window: **SPACE** records audio/video, **ENTER** stops and assesses, **1-3** confirms and
 speaks an option, **R** retries, **P** opens the packet and **Q** quits. See
@@ -44,32 +44,32 @@ speaks an option, **R** retries, **P** opens the packet and **Q** quits. See
 
 ### Learning lab
 ```powershell
-& .\.venv\Scripts\python.exe cuecom_session.py --record
+& .\.venv\Scripts\python.exe -m apps.session --record
 ```
 Combines person selection, face/body/hand features, anonymous audiovisual motifs, the ASL alphabet reader,
 conversation context and confirmation before local speech. See [the layer-test guide](docs/SESSION-LAB.md).
 
 ### Live pipeline (earlier entry point)
 ```bash
-.venv/bin/python run.py --camera 0 --audio          # macOS
-.venv\Scripts\python.exe run.py --camera 0 --audio  # Windows
+.venv/bin/python -m apps.live --camera 0 --audio          # macOS
+.venv\Scripts\python.exe -m apps.live --camera 0 --audio  # Windows
 ```
 Optional conversation model (dialogue corpora are downloaded, not committed; DailyDialog is CC BY-NC-SA 4.0):
 ```bash
-python conversation.py fetch
-python conversation.py build
+python -m cuecom.context.conversation fetch
+python -m cuecom.context.conversation build
 ```
 Enroll your own signs (each recorded 4 times; recordings stay in `data/signs/`, not in git):
 ```bash
-python signs.py enroll --signs YES NO HELP MORE WATER BATHROOM
-python signs.py check
+python -m cuecom.perception.vision.signs enroll --signs YES NO HELP MORE WATER BATHROOM
+python -m cuecom.perception.vision.signs check
 ```
 Dialogue-act model (Switchboard, CC BY-NC-SA 3.0, downloaded not committed):
 ```bash
-python acts.py fetch
-python acts.py train
-python conversation.py soften
-python conversation.py fit
+python -m cuecom.context.acts fetch
+python -m cuecom.context.acts train
+python -m cuecom.context.conversation soften
+python -m cuecom.context.conversation fit
 ```
 Keys: **1–3** confirm and speak, **0** rejects all, **N** switches which person is the user, **Q** quits.
 Fingerspelling: **A** adds the stable letter, **SPACE** a space, **D** deletes, **C** clears, **S** speaks.
@@ -78,32 +78,34 @@ Fingerspelling: **A** adds the stable letter, **SPACE** a space, **D** deletes, 
 ## Tests
 Offline tests open no sensors and make no provider calls:
 ```bash
-python -m unittest discover -s tools -p "test_*.py"
+python -m unittest discover -s tests -t .
 ```
 
 ## Layout
-| File | Role |
-|---|---|
-| `video.py` | person tracking (YOLO11n-pose + ByteTrack), Envision LightGBM gesture probability, MediaPipe gestures/face on the selected user |
-| `video_layer.py`, `visual_session.py`, `person_selection.py`, `automatic_target.py` | visual feature layer and choosing which person is the user |
-| `audio_text.py` | voc2vec vocalization classifier, mic pipeline, `BayesianFusion` |
-| `audio_layer.py` | standalone nonverbal audio events, before fusion (one microphone cannot say who made a sound) |
-| `transcribe.py` | speech transcription (local faster-whisper; optional hosted provider) |
-| `motif_learning.py` | anonymous audiovisual motifs learned from confirmed choices |
-| `retrieval.py` | phrase database, MiniLM embeddings, phrase ranker |
-| `meaning.py` | partner-question context, referents from pointing, mixed-signal clarify, sentence composer |
-| `conversation.py`, `conversation_state.py` | conversation model: (partner turn -> reply) pairs give P(reply type \| partner) and real replies |
-| `acts.py` | Switchboard dialogue acts: P(act \| text), act transitions, act -> intent map |
-| `asl.py` | ASL fingerspelling (A-Z): EfficientNet-B0 classifier + stability voting |
-| `signs.py` | enrolled keyword signs: guided recording, DTW spotting with a no-sign option |
-| `assessment_service.py`, `assessment_capture.py`, `assessment_session.py` | recorded clip -> evidence packet -> three options; UI-independent service plus OpenCV surface |
-| `gemini_client.py`, `gemini_assessment.py`, `llm.py` | optional hosted LLM layers with validation and timeouts |
-| `cuecom_session.py`, `session_engine.py`, `session_capture.py` | session entry point and engine |
-| `tts.py` | offline text-to-speech |
-| `simulate.py` | simulator and evaluations (synthetic signals, held-out dialogues, AAC corpus coverage) |
-| `run.py` | earlier live loop and panel |
-| `config/` | likelihood tables (placeholders), phrase database, LLM profiles |
-| `tools/` | tests, benches and layer labs |
-| `docs/` | plan, evaluation, layer notes and research |
+The pipeline is a set of stages behind small interfaces; [architecture](docs/ARCHITECTURE.md) explains
+the seams, how to add a component, and how to read a session trace.
+
+```
+cuecom/
+  core/        types.py (Event, Option), interfaces.py (stage protocols), clock.py, trace.py, validate.py
+  config.py    repository paths (Settings)
+  sensors/     camera.py (LiveCapture), microphone.py (shared-clock mic, WAV replay), clip.py (recorded clips)
+  perception/  vision/  video.py (YOLO11n-pose + ByteTrack, Envision, MediaPipe), features.py, session.py
+                        (VisualSession), person_lock.py, auto_target.py, envision.py, asl.py, signs.py
+               audio/   events.py (segmenter, voc2vec, template classifier), vocalization.py (classifier + fusion)
+               speech/  transcribe.py (faster-whisper, optional Meta Muse)
+  learning/    motifs.py (MotifLearner: motifs grounded only through confirmations)
+  context/     state.py (ConversationState), conversation.py (reply model), acts.py (dialogue acts)
+  inference/   meaning.py (referents, clarify, composer), retrieval.py (phrase database + ranker)
+  llm/         gemini.py, assessment.py (three validated options), composer.py (Anthropic/other providers)
+  session/     engine.py (SessionEngine), assessment.py (ClipAssessmentService)
+  output/      tts.py
+  debug/       overlay.py (landmark/tracking drawing)
+apps/          session.py, assessment.py (OpenCV surfaces), live.py (earlier loop), labs/ (layer test labs)
+tests/         offline contract tests
+tools/         simulate.py, pool_oracle.py, benches, check_gemini.py
+config/        likelihood tables (placeholders), phrase database, LLM profiles
+docs/          architecture, plan, evaluation, layer notes and research
+```
 
 Phrase data includes messages from Vertanen & Kristensson (2011), CC BY 4.0. See `data/aac_corpus/README.md`.

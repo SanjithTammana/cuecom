@@ -9,7 +9,7 @@ The response includes an assessment with cited observations and limitations, ten
 Offline checks use fabricated media and mocked HTTP, without sensors, keys or cloud calls:
 
 ```powershell
-& .\.venv\Scripts\python.exe tools\test_gemini_assessment.py
+& .\.venv\Scripts\python.exe -m tests.test_gemini_assessment
 ```
 
 These tests verify the integration contract. They do not certify a real model/account's access, latency, diarization, transcription or interpretation accuracy.

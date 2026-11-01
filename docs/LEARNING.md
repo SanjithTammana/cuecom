@@ -1,6 +1,6 @@
 # Personal motifs and confirmed meaning
 
-`motif_learning.py` discovers repeated feature patterns without word enrollment.
+`cuecom/learning/motifs.py` discovers repeated feature patterns without word enrollment.
 It does not infer what an unlabelled gesture or vocalization means. The user can
 choose or edit an utterance after an occurrence; that explicit confirmation can
 ground the preceding evidence. Gemini suggestions are not training labels.
@@ -143,7 +143,7 @@ reached; no silent model/schema migration occurs.
 Run the synthetic suite from the project root:
 
 ```powershell
-& .\.venv\Scripts\python.exe -B tools\test_motif_learning.py
+& .\.venv\Scripts\python.exe -B -m tests.test_motif_learning
 ```
 
 Tests cover repetition/novelty, missing ownership, nonfinite/schema errors,

@@ -4,7 +4,7 @@ Read-only literature and code survey. Nothing here was run on cuecom's data. Tag
 **[S]** secondary summary only (search snippet or third-party page, not the primary text), **[J]** my judgment or extrapolation.
 Where a number or license could not be confirmed it says so, and it is repeated under "Could not verify".
 
-Why this survey: the two LLM attempts in `llm.py` (compose from frame; select-and-adapt) used the LLM as a **replacement generator**
+Why this survey: the two LLM attempts in `cuecom/llm/composer.py` (compose from frame; select-and-adapt) used the LLM as a **replacement generator**
 and lost to retrieval on held-out dialogues (hit@3 0.42 vs 0.48, `EVALUATION.md` 4b). The published systems below mostly use the
 LLM differently: as a **proposal generator plus scorer** inside a noisy-channel or n-best rescoring loop, where the sensor-side
 model keeps a vote and real candidates are never discarded. [J]
@@ -159,14 +159,14 @@ score(s) = l1 * log P_sig(s)
 
 P_sig(s) = sum_{i,r} P(i, r | signals) * P(i, r | s) / P(i, r | ctx)
 ```
-- `P(i,r | signals)` is the existing Bayesian posterior. `P(i,r | s)` is the rule labeler (`conversation.py` labels) plus a "mentions
+- `P(i,r | signals)` is the existing Bayesian posterior. `P(i,r | s)` is the rule labeler (`cuecom/context/conversation.py` labels) plus a "mentions
   referent r" check; soft, with a floor (for example 0.05) so a mislabel cannot veto a sentence.
 - The division by `P(i,r | ctx)` removes the conversation prior from the signal term, because that prior is already inside `P_LM` and
   `P_ret`; leaving it in double counts it (the same trap noted for recursive filtering in `RESEARCH-interpretation.md`). [J]
 - Use PMI instead of raw `log P_LM`: `log P_LM(s | ctx) - log P_LM(s)` (or a small constant weight on the unconditioned term), otherwise
   short generic sentences ("Yes.", "OK.") win on length alone. The Willett code handles length only through `length_penalty` (default
   0.0) because its hypotheses all share one acoustic length; cuecom's do not. [J]
-- Selection: top 3 by score with a diversity step (MMR already exists in `retrieval.py`), always keep a deterministic Yes/No slot when
+- Selection: top 3 by score with a diversity step (MMR already exists in `cuecom/inference/retrieval.py`), always keep a deterministic Yes/No slot when
   the partner asked a yes/no question (AACessTalk's fixed core vocabulary). [J]
 
 ### 7.3 Weights

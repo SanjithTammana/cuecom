@@ -16,9 +16,9 @@ python3.11 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python -m pip install --no-deps envisionhgdetector==3.0.8
-.venv/bin/python -c "import video, audio_text, retrieval, tts; print('cuecom imports OK')"
+.venv/bin/python -c "import cuecom.perception.vision.video, cuecom.perception.audio.vocalization, cuecom.inference.retrieval, cuecom.output.tts; print('cuecom imports OK')"
 
 echo
 echo "Done. Grant Camera and Microphone access to your terminal (or PyCharm) in"
 echo "System Settings > Privacy & Security, then run:"
-echo "  .venv/bin/python cuecom_session.py --assessment"
+echo "  .venv/bin/python -m apps.session --assessment"

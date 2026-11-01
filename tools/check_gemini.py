@@ -5,7 +5,7 @@ import sys
 import urllib.error
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from gemini_client import GeminiClient, GeminiError, _https_transport
+from cuecom.llm.gemini import GeminiClient, GeminiError, _https_transport
 
 
 def main():

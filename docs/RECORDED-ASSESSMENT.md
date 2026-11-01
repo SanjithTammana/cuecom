@@ -3,7 +3,7 @@
 The current OpenCV entry point wraps a UI-independent Python service, ready to be called by any frontend.
 
 ```powershell
-& .\.venv\Scripts\python.exe cuecom_session.py --assessment --device 2
+& .\.venv\Scripts\python.exe -m apps.session --assessment --device 2
 ```
 
 The test surface opens the camera and microphone for live preview. `SPACE` begins saving a clip; `ENTER` stops and sends that completed recording and its evidence packet to Gemini. Clips stop automatically after 30 seconds. `1`, `2`, `3` explicitly confirm one proposed utterance and speak it locally. `R` retries the same saved clip; `P` opens the JSON packet; `Q` closes the test. `Y` confirms a provisional communicator and `N` corrects the selected person. Establish the intended person before recording when several unfamiliar people are visible. ASL alphabet controls remain `A` append, `B` space, `D` delete and `S` confirm/speak spelling. Speech cannot start from a selection while recording.
@@ -11,7 +11,7 @@ The test surface opens the camera and microphone for live preview. `SPACE` begin
 For one automated smoke test after a five-second preview:
 
 ```powershell
-& .\.venv\Scripts\python.exe cuecom_session.py --assessment --device 2 --auto-record-seconds 8
+& .\.venv\Scripts\python.exe -m apps.session --assessment --device 2 --auto-record-seconds 8
 ```
 
 Device numbers are machine-specific. Device 2 was the built-in microphone array when this integration was tested; the default input was a Bluetooth headset. Omitting `--device` uses the current default.
@@ -20,7 +20,7 @@ One clip saves ignored local `video.mp4`, `audio.wav`, per-block timing files, f
 
 Gemini receives the clip's complete recorded visual/audio tracks, compact measured features, local transcript, current uncalibrated belief, prior confirmed messages and bounded recent conversation. Full local measurements remain in `features.json`; transmitted measurements are evenly subsampled to respect a serialized JSON budget. Partner roles, topic/question inference and transcripts remain hypotheses. A room microphone does not identify the communicator; ambiguous identity and clock failures permit clarification options rather than asserted meanings. The result has exactly three alternatives and requires confirmation.
 
-The backend lives in `assessment_service.py`: `ClipAssessmentService.prepare()`, `.observe(frame, at_s)`, `.packet(clip, capture)`, `.assess(clip, capture, packet)` and `.confirm(option, packet, at_s)`. `assessment_capture.py` owns media recording; `gemini_assessment.py` owns the validated cloud request. `assessment_session.py` is only the OpenCV test surface. No framework, package installation or publication is required.
+The backend lives in `cuecom/session/assessment.py`: `ClipAssessmentService.prepare()`, `.observe(frame, at_s)`, `.packet(clip, capture)`, `.assess(clip, capture, packet)` and `.confirm(option, packet, at_s)`. `cuecom/sensors/clip.py` owns media recording; `cuecom/llm/assessment.py` owns the validated cloud request. `apps/assessment.py` is only the OpenCV test surface. No framework, package installation or publication is required.
 
 The interpretation update labels speculative options `[hypothesis]` and asks for different
 possible meanings, with evidence and caveats in the JSON reasons. Uncertain role/timing no

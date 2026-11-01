@@ -14,13 +14,13 @@ redistributing their weights.
 Export Envision's packaged CNN and LightGBM assets (h5py is included in requirements):
 
 ```powershell
-& .\.venv\Scripts\python.exe envision_port.py export
+& .\.venv\Scripts\python.exe -m cuecom.perception.vision.envision export
 ```
 
 Download the three MediaPipe task bundles, using the existing atomic download helper:
 
 ```powershell
-& .\.venv\Scripts\python.exe -c "from video import MODELS, GESTURE_URL, FACE_URL, download_once; download_once(GESTURE_URL, MODELS/'gesture_recognizer.task'); download_once(FACE_URL, MODELS/'face_landmarker.task'); download_once('https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task', MODELS/'pose_landmarker_full.task')"
+& .\.venv\Scripts\python.exe -c "from cuecom.perception.vision.video import MODELS, GESTURE_URL, FACE_URL, download_once; download_once(GESTURE_URL, MODELS/'gesture_recognizer.task'); download_once(FACE_URL, MODELS/'face_landmarker.task'); download_once('https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task', MODELS/'pose_landmarker_full.task')"
 ```
 
 See Google's [Pose Landmarker guide](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker/python)
@@ -62,8 +62,8 @@ overrides normal settings; it is also ignored. See [Gemini setup](GEMINI-SETUP.m
 
 ```powershell
 Copy-Item .env.example .env
-& .\.venv\Scripts\python.exe tools\audio_layer_lab.py devices
-& .\.venv\Scripts\python.exe cuecom_session.py --assessment
+& .\.venv\Scripts\python.exe -m apps.labs.audio_layer_lab devices
+& .\.venv\Scripts\python.exe -m apps.session --assessment
 ```
 
 Choose `--device N` only if the default microphone is wrong. Device numbers are machine-specific.
@@ -75,7 +75,7 @@ the previous alphabet/fingerspelling component, not full language translation. S
 Offline checks open no sensors and make no real provider calls:
 
 ```powershell
-& .\.venv\Scripts\python.exe -m unittest discover -s tools -p 'test_*.py'
+& .\.venv\Scripts\python.exe -m unittest discover -s tests -t .
 ```
 
 Fresh-clone source checks use the available Python environment; that does not certify a new
